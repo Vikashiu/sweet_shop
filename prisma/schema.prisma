@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum InventoryEvent {
+  PURCHASE
+  RESTOCK
+}
+
+model User {
+  id            String                 @id @default(uuid())
+  email         String                 @unique
+  passwordHash  String
+  role          Role                   @default(CUSTOMER)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  // relations
+  // tokens         RefreshToken[]
+  inventoryLogs InventoryTransaction[]
+  orders        Order[]
+
+  @@index([role])
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sweets Sweet[]
+}
+
+model Sweet {
+  id         String    @id @default(uuid())
+  name       String    @unique
+  slug       String    @unique
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  price      Decimal   @db.Decimal(10, 2)
+  quantity   Int       @default(0) // current stock
+  isActive   Boolean   @default(true)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  inventoryLogs InventoryTransaction[]
+  orderItems    OrderItem[]
+
+  @@index([categoryId])
+  @@index([price])
+  @@index([isActive, deletedAt])
+  // for case-insensitive search by name
+  @@index([name])
+}
+
+model InventoryTransaction {
+  id        String         @id @default(uuid())
+  sweetId   String
+  sweet     Sweet          @relation(fields: [sweetId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  event     InventoryEvent
+  quantity  Int // positive number describing the change magnitude
+  // convenience fields for auditing
+  beforeQty Int
+  afterQty  Int
+  note      String?
+  createdAt DateTime       @default(now())
+
+  @@index([sweetId, createdAt])
+  @@index([event, createdAt])
+}
+
+model Order {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  total     Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sweetId   String
+  sweet     Sweet   @relation(fields: [sweetId], references: [id], onDelete: Restrict)
+  qty       Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  lineTotal Decimal @db.Decimal(12, 2)
+
+  @@index([orderId])
+  @@index([sweetId])
+}
