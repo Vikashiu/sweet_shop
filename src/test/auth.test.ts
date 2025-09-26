@@ -19,7 +19,7 @@ vi.mock('jsonwebtoken', () => {
 });
 
 // Now import app (after mocks)
-import { app }from '..';
+import  app from '..';
 import request from 'supertest';
 import { prismaClient } from '../db';
 import * as jwt from 'jsonwebtoken';

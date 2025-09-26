@@ -1,6 +1,12 @@
 export const prismaClient = {
 user: {
-findFirst: async (_args: any) => { throw new Error('not implemented'); },
-create: async (_args: any) => { throw new Error('not implemented'); }
-}
+findFirst: async (_: any) => { throw new Error('not implemented'); },
+create: async (_: any) => { throw new Error('not implemented'); },
+},
+sweet: {
+create: async (_: any) => { throw new Error('not implemented'); },
+findMany: async (_: any) => { throw new Error('not implemented'); },
+update: async (_: any) => { throw new Error('not implemented'); },
+delete: async (_: any) => { throw new Error('not implemented'); },
+},
 } as any;
