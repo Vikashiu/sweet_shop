@@ -116,4 +116,33 @@ router.delete("/:id", authMiddleware, async (req: AuthRequest, res) => {
 });
 
 
+router.post("/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const qty = Number(req.body?.quantity ?? 1);
+
+  // validate quantity: positive integer
+  if (!Number.isInteger(qty) || qty <= 0) {
+    return res.status(411).json({ message: "incorrect inputs" });
+  }
+
+  try {
+    // check current stock
+    const sweet = await prismaClient.sweet.findUnique({ where: { id } });
+    if (!sweet) return res.status(404).json({ message: "sweet not found" });
+
+    if ((sweet.quantity ?? 0) < qty) {
+      return res.status(409).json({ message: "insufficient stock" });
+    }
+
+    // atomic decrement
+    const updated = await prismaClient.sweet.update({
+      where: { id },
+      data: { quantity: { decrement: qty } },
+    });
+
+    return res.status(200).json(updated);
+  } catch (err) {
+    return res.status(500).json({ message: "internal server error" });
+  }
+});
 export default router;
