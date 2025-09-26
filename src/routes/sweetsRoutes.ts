@@ -146,6 +146,31 @@ router.post("/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
+router.post("/:id/restock", authMiddleware, async (req: AuthRequest, res) => {
+  if (req.role !== "ADMIN") {
+    return res.status(403).json({ message: "forbidden" });
+  }
 
+  const { id } = req.params;
+  const qty = Number(req.body?.quantity ?? 1);
+
+  // validate quantity: positive integer
+  if (!Number.isInteger(qty) || qty <= 0) {
+    return res.status(411).json({ message: "incorrect inputs" });
+  }
+
+  try {
+    const updated = await prismaClient.sweet.update({
+      where: { id },
+      data: { quantity: { increment: qty } },
+    });
+    return res.status(200).json(updated);
+  } catch (err: any) {
+    if (err?.code === "P2025") {
+      return res.status(404).json({ message: "sweet not found" });
+    }
+    return res.status(500).json({ message: "internal server error" });
+  }
+});
 
 export default router;
