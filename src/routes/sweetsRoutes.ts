@@ -64,7 +64,6 @@ router.get('/search', authMiddleware, async (req, res) => {
             clauses.push({ price: { ...(minPrice !== undefined ? { gte: minPrice } : {}), ...(maxPrice !== undefined ? { lte: maxPrice } : {}) } });
         }
 
-
         let where: any | undefined;
         if (clauses.length === 1) where = clauses[0];
         else if (clauses.length > 1) where = { AND: clauses };
@@ -76,5 +75,7 @@ router.get('/search', authMiddleware, async (req, res) => {
         return res.status(500).json({ message: 'internal server error' });
     }
 });
+
+
 
 export default router;

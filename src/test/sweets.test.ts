@@ -221,3 +221,80 @@ describe('GET /api/sweets/search — query sweets', () => {
         expect(res.status).toBe(401);
     });
 });
+
+describe('PUT /api/sweets/:id — update sweet', () => {
+    it('200 → updates allowed fields (e.g., name and price)', async () => {
+        const id = 's1';
+        const body = { name: 'Kaju Katli Premium', price: 275 };
+
+
+        (prismaClient.sweet.update as any).mockResolvedValue({
+            id,
+            name: body.name,
+            category: 'Traditional',
+            price: body.price,
+            quantity: 10,
+        });
+
+
+        const res = await request(app)
+            .put(`/api/sweets/${id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send(body)
+            .expect(200);
+
+
+        expect(res.body).toMatchObject({ id, name: body.name, price: body.price });
+        expect(prismaClient.sweet.update).toHaveBeenCalledWith({
+            where: { id },
+            data: body,
+        });
+    });
+
+
+    it('411 → validation error on bad input (negative price / empty name)', async () => {
+        const id = 's2';
+        const res = await request(app)
+            .put(`/api/sweets/${id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ price: -10 })
+            .expect(411);
+
+
+        expect(res.body).toHaveProperty('message');
+    });
+    it('404 → when sweet not found', async () => {
+        const id = 'missing-id';
+
+
+        // Simulate Prisma P2025 (record not found)
+        const err: any = new Error('No record found');
+        err.code = 'P2025';
+        (prismaClient.sweet.update as any).mockRejectedValueOnce(err);
+
+
+        const res = await request(app)
+            .put(`/api/sweets/${id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ name: 'NewName' })
+            .expect(404);
+
+
+        expect(res.body).toHaveProperty('message');
+    });
+
+
+    it('401 → rejects when Authorization header is missing', async () => {
+        const res = await request(app).put('/api/sweets/s1').send({ name: 'X' });
+        expect(res.status).toBe(401);
+    });
+
+
+    it('401 → rejects when token is invalid', async () => {
+        const res = await request(app)
+            .put('/api/sweets/s1')
+            .set('Authorization', 'Bearer invalid.token')
+            .send({ name: 'X' });
+        expect(res.status).toBe(401);
+    });
+});
