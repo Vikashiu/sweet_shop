@@ -1,7 +1,7 @@
 import express from 'express';
 import { prismaClient } from '../db';
 import { sweetSchema , sweetUpdateSchema} from '../types/sweetTypes';
-import { authMiddleware } from '../middleware/authMiddleware';
+import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 
 
 const router = express.Router();
@@ -92,6 +92,22 @@ router.put("/:id", authMiddleware, async (req, res) => {
     return res.status(200).json(updated);
   } catch (err: any) {
     // Prisma not found
+    if (err?.code === "P2025") {
+      return res.status(404).json({ message: "sweet not found" });
+    }
+    return res.status(500).json({ message: "internal server error" });
+  }
+});
+
+router.delete("/:id", authMiddleware, async (req: AuthRequest, res) => {
+  if (req.role !== "ADMIN") {
+    return res.status(403).json({ message: "forbidden" });
+  }
+
+  try {
+    await prismaClient.sweet.delete({ where: { id: req.params.id } });
+    return res.status(204).send(); // no content
+  } catch (err: any) {
     if (err?.code === "P2025") {
       return res.status(404).json({ message: "sweet not found" });
     }
