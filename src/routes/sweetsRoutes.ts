@@ -33,6 +33,48 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/sweets/search → search by name/category/price range
+router.get('/search', authMiddleware, async (req, res) => {
+    try {
+        const name = typeof req.query.name === 'string' ? req.query.name.trim() : undefined;
+        const category = typeof req.query.category === 'string' ? req.query.category.trim() : undefined;
+        const minPriceStr = typeof req.query.minPrice === 'string' ? req.query.minPrice : undefined;
+        const maxPriceStr = typeof req.query.maxPrice === 'string' ? req.query.maxPrice : undefined;
 
+
+        const minPrice = minPriceStr !== undefined ? Number(minPriceStr) : undefined;
+        const maxPrice = maxPriceStr !== undefined ? Number(maxPriceStr) : undefined;
+
+
+        // Validate numbers if provided
+        if ((minPriceStr !== undefined && Number.isNaN(minPrice)) || (maxPriceStr !== undefined && Number.isNaN(maxPrice))) {
+            return res.status(411).json({ message: 'incorrect inputs' });
+        }
+
+
+        if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+            return res.status(411).json({ message: 'incorrect inputs' });
+        }
+
+
+        const clauses: any[] = [];
+        if (name) clauses.push({ name: { contains: name, mode: 'insensitive' as const } });
+        if (category) clauses.push({ category: { equals: category, mode: 'insensitive' as const } });
+        if (minPrice !== undefined || maxPrice !== undefined) {
+            clauses.push({ price: { ...(minPrice !== undefined ? { gte: minPrice } : {}), ...(maxPrice !== undefined ? { lte: maxPrice } : {}) } });
+        }
+
+
+        let where: any | undefined;
+        if (clauses.length === 1) where = clauses[0];
+        else if (clauses.length > 1) where = { AND: clauses };
+
+
+        const sweets = await prismaClient.sweet.findMany(where ? { where } : {});
+        return res.status(200).json(sweets);
+    } catch (err) {
+        return res.status(500).json({ message: 'internal server error' });
+    }
+});
 
 export default router;
