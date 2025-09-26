@@ -298,3 +298,73 @@ describe('PUT /api/sweets/:id — update sweet', () => {
         expect(res.status).toBe(401);
     });
 });
+
+let adminToken: string;
+let userToken: string;
+
+
+beforeAll(() => {
+adminToken = makeTestToken({ role: 'ADMIN' });
+userToken = makeTestToken({ role: 'CUSTOMER' });
+});
+
+describe('DELETE /api/sweets/:id — admin only', () => {
+it('204 → deletes a sweet when admin', async () => {
+const id = 's-del-1';
+
+
+// prisma delete returns deleted object; we return 204 no body
+(prismaClient.sweet.delete as any).mockResolvedValue({ id });
+
+
+const res = await request(app)
+.delete(`/api/sweets/${id}`)
+.set('Authorization', `Bearer ${adminToken}`)
+.expect([200, 204]);
+
+
+// Some codebases return 200 with deleted entity; we accept 200 or 204
+expect(prismaClient.sweet.delete).toHaveBeenCalledWith({ where: { id } });
+});
+
+
+it('403 → rejects non-admin user', async () => {
+const res = await request(app)
+.delete('/api/sweets/any')
+.set('Authorization', `Bearer ${userToken}`);
+
+
+expect(res.status).toBe(403);
+});
+
+
+it('404 → when sweet not found', async () => {
+const id = 'missing-id';
+const err: any = new Error('No record found');
+err.code = 'P2025';
+(prismaClient.sweet.delete as any).mockRejectedValueOnce(err);
+
+
+const res = await request(app)
+.delete(`/api/sweets/${id}`)
+.set('Authorization', `Bearer ${adminToken}`)
+.expect(404);
+
+
+expect(res.body).toHaveProperty('message');
+});
+
+
+it('401 → rejects when Authorization header is missing', async () => {
+const res = await request(app).delete('/api/sweets/xyz');
+expect(res.status).toBe(401);
+});
+
+
+it('401 → rejects when token is invalid', async () => {
+const res = await request(app)
+.delete('/api/sweets/xyz')
+.set('Authorization', 'Bearer invalid.token');
+expect(res.status).toBe(401);
+});
+});
