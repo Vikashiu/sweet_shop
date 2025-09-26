@@ -1,6 +1,6 @@
 import express from 'express';
 import { prismaClient } from '../db';
-import { sweetSchema } from '../types/sweetTypes';
+import { sweetSchema , sweetUpdateSchema} from '../types/sweetTypes';
 import { authMiddleware } from '../middleware/authMiddleware';
 
 
@@ -76,6 +76,28 @@ router.get('/search', authMiddleware, async (req, res) => {
     }
 });
 
+router.put("/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+
+  const parsed = sweetUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(411).json({ message: "incorrect inputs" });
+  }
+
+  try {
+    const updated = await prismaClient.sweet.update({
+      where: { id },
+      data: parsed.data,
+    });
+    return res.status(200).json(updated);
+  } catch (err: any) {
+    // Prisma not found
+    if (err?.code === "P2025") {
+      return res.status(404).json({ message: "sweet not found" });
+    }
+    return res.status(500).json({ message: "internal server error" });
+  }
+});
 
 
 export default router;
