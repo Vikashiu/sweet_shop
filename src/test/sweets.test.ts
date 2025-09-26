@@ -61,3 +61,52 @@ describe('POST /api/sweets', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('GET /api/sweets — list sweets', () => {
+it('200 → returns an array of sweets', async () => {
+(prismaClient.sweet.findMany as any).mockResolvedValue([
+{ id: 's1', name: 'Gulab Jamun', category: 'Traditional', price: 120, quantity: 40 },
+{ id: 's2', name: 'Rasgulla', category: 'Traditional', price: 100, quantity: 30 },
+]);
+
+
+const res = await request(app)
+.get('/api/sweets')
+.set('Authorization', `Bearer ${token}`)
+.expect(200);
+
+
+expect(Array.isArray(res.body)).toBe(true);
+expect(res.body.length).toBe(2);
+expect(res.body[0]).toMatchObject({ id: 's1', name: 'Gulab Jamun' });
+expect(res.body[1]).toMatchObject({ id: 's2', name: 'Rasgulla' });
+});
+
+
+it('200 → returns empty array when no sweets exist', async () => {
+(prismaClient.sweet.findMany as any).mockResolvedValue([]);
+
+
+const res = await request(app)
+.get('/api/sweets')
+.set('Authorization', `Bearer ${token}`)
+.expect(200);
+
+
+expect(res.body).toEqual([]);
+});
+
+
+it('401 → rejects when Authorization header is missing', async () => {
+const res = await request(app).get('/api/sweets');
+expect(res.status).toBe(401);
+});
+
+
+it('401 → rejects when token is invalid', async () => {
+const res = await request(app)
+.get('/api/sweets')
+.set('Authorization', 'Bearer invalid.token.here');
+expect(res.status).toBe(401);
+});
+});
