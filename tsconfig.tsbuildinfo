@@ -1,0 +1,1 @@
+{"root":["./src/bin.ts","./src/db.ts","./src/index.ts","./src/__mock__/db.ts","./src/auth/authroutes.ts","./src/test/auth.test.ts","./src/types/usertypes.ts"],"version":"5.8.3"}
