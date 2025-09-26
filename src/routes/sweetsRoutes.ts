@@ -145,4 +145,7 @@ router.post("/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
     return res.status(500).json({ message: "internal server error" });
   }
 });
+
+
+
 export default router;

@@ -13,6 +13,12 @@ import { makeTestToken } from "../__mock__/testauth";
 import { prismaClient } from "../db";
 
 let userToken: string;
+let adminToken: string;
+
+beforeAll(() => {
+  adminToken = makeTestToken({ role: "ADMIN" });
+  // userToken is already set above
+});
 afterEach(() => {
   vi.clearAllMocks(); // clears call history on all spies/mocks
 });
@@ -93,5 +99,69 @@ describe("POST /api/sweets/:id/purchase", () => {
       .send({ quantity: 1 });
 
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/sweets/:id/restock (Admin only)", () => {
+  it("200 → increases quantity when admin", async () => {
+    const id = "sweetA";
+
+    (prismaClient.sweet.update as any).mockResolvedValue({
+      id,
+      name: "Kaju Katli",
+      category: "Traditional",
+      price: 250,
+      quantity: 15,
+    });
+
+    const res = await request(app)
+      .post(`/api/sweets/${id}/restock`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ quantity: 5 })
+      .expect(200);
+
+    expect(res.body).toMatchObject({ id, quantity: 15 });
+    expect(prismaClient.sweet.update).toHaveBeenCalledWith({
+      where: { id },
+      data: { quantity: { increment: 5 } },
+    });
+  });
+
+  it("403 → rejects non-admin user", async () => {
+    await request(app)
+      .post("/api/sweets/sweetB/restock")
+      .set("Authorization", `Bearer ${userToken}`)
+      .send({ quantity: 5 })
+      .expect(403);
+  });
+
+  it("411 → validation error when quantity ≤ 0", async () => {
+    await request(app)
+      .post("/api/sweets/sweetC/restock")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ quantity: 0 })
+      .expect(411);
+
+    expect(prismaClient.sweet.update).not.toHaveBeenCalled();
+  });
+
+  it("404 → when sweet not found (Prisma P2025)", async () => {
+    const id = "missing-id";
+    const err: any = new Error("No record found");
+    err.code = "P2025";
+    (prismaClient.sweet.update as any).mockRejectedValueOnce(err);
+
+    await request(app)
+      .post(`/api/sweets/${id}/restock`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ quantity: 3 })
+      .expect(404);
+  });
+
+  it("401 → rejects when Authorization header missing", async () => {
+    await request(app)
+      .post("/api/sweets/sweetD/restock")
+      .send({ quantity: 2 })
+      .expect(401);
   });
 });
