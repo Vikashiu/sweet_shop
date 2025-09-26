@@ -24,7 +24,14 @@ return res.status(500).json({ message: 'internal server error' });
 }
 });
 
-
+router.get('/', authMiddleware, async (req, res) => {
+try {
+const sweets = await prismaClient.sweet.findMany();
+return res.status(200).json(sweets);
+} catch (err) {
+return res.status(500).json({ message: 'internal server error' });
+}
+});
 
 
 export default router;
